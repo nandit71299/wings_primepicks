@@ -1,44 +1,41 @@
 "use strict";
-
-const { DataTypes } = require("sequelize");
-
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("Users", {
+    await queryInterface.createTable("AuditLogs", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      first_name: {
+      action: {
+        type: Sequelize.STRING,
         allowNull: false,
-        type: Sequelize.STRING,
       },
-      last_name: {
+      target_table: {
         type: Sequelize.STRING,
-      },
-      email: {
         allowNull: false,
+      },
+      target_id: {
+        type: Sequelize.INTEGER,
+      },
+      user_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Users",
+          key: "id",
+        },
+      },
+      ip_address: {
         type: Sequelize.STRING,
-        unique: true,
       },
-      phone: {
-        type: Sequelize.STRING,
-        unique: true,
-        allowNull: true,
-      },
-      password: {
-        allowNull: false,
+      user_agent: {
         type: Sequelize.STRING,
       },
-      is_active: {
-        defaultValue: true,
-        type: Sequelize.BOOLEAN,
-      },
-      role: {
-        type: Sequelize.ENUM("customer", "seller", "admin"),
+      items_count: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
       },
       createdAt: {
         allowNull: false,
@@ -54,6 +51,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Users");
+    await queryInterface.dropTable("AuditLogs");
   },
 };

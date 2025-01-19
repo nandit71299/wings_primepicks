@@ -1,44 +1,46 @@
 "use strict";
-
-const { DataTypes } = require("sequelize");
-
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("Users", {
+    await queryInterface.createTable("OrderItems", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      first_name: {
+      order_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Orders",
+          key: "id",
+        },
         allowNull: false,
-        type: Sequelize.STRING,
+        onDelete: "CASCADE",
       },
-      last_name: {
-        type: Sequelize.STRING,
-      },
-      email: {
+      product_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Products",
+          key: "id",
+        },
         allowNull: false,
-        type: Sequelize.STRING,
-        unique: true,
       },
-      phone: {
-        type: Sequelize.STRING,
-        unique: true,
-        allowNull: true,
-      },
-      password: {
+      quantity: {
+        type: Sequelize.INTEGER,
         allowNull: false,
-        type: Sequelize.STRING,
       },
-      is_active: {
-        defaultValue: true,
-        type: Sequelize.BOOLEAN,
+      subtotal: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
       },
-      role: {
-        type: Sequelize.ENUM("customer", "seller", "admin"),
+      tax: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      total: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
       },
       createdAt: {
         allowNull: false,
@@ -54,6 +56,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Users");
+    await queryInterface.dropTable("OrderItems");
   },
 };

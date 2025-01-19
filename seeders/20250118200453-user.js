@@ -23,18 +23,18 @@ module.exports = {
     // Insert the users with hashed passwords
     await queryInterface.bulkInsert("Users", [
       {
-        first_name: "John",
-        last_name: "Doe",
-        email: "admin@primepicks.com",
-        password: hashedPasswords[0], // admin's hashed password
-        role: "admin",
-      },
-      {
         first_name: "Nick",
         last_name: "Thomas",
         email: "customer@primepicks.com",
         password: hashedPasswords[1], // customer's hashed password
         role: "customer",
+      },
+      {
+        first_name: "John",
+        last_name: "Doe",
+        email: "admin@primepicks.com",
+        password: hashedPasswords[0], // admin's hashed password
+        role: "admin",
       },
       {
         first_name: "Haily",

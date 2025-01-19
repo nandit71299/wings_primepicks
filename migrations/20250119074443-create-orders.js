@@ -1,44 +1,45 @@
 "use strict";
-
-const { DataTypes } = require("sequelize");
-
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("Users", {
+    await queryInterface.createTable("Orders", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      first_name: {
+      user_id: {
+        type: Sequelize.INTEGER,
         allowNull: false,
-        type: Sequelize.STRING,
+        references: {
+          model: "Users",
+          key: "id",
+        },
+        onDelete: "CASCADE",
       },
-      last_name: {
-        type: Sequelize.STRING,
-      },
-      email: {
+      subtotal: {
+        type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
-        type: Sequelize.STRING,
-        unique: true,
       },
-      phone: {
-        type: Sequelize.STRING,
-        unique: true,
-        allowNull: true,
-      },
-      password: {
+      tax: {
+        type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
-        type: Sequelize.STRING,
       },
-      is_active: {
-        defaultValue: true,
-        type: Sequelize.BOOLEAN,
+      total: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
       },
-      role: {
-        type: Sequelize.ENUM("customer", "seller", "admin"),
+      status: {
+        type: Sequelize.ENUM(
+          "Pending",
+          "Processing",
+          "Shipped",
+          "Delivered",
+          "Cancelled"
+        ),
+        defaultValue: "Pending",
+        allowNull: false,
       },
       createdAt: {
         allowNull: false,
@@ -54,6 +55,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Users");
+    await queryInterface.dropTable("Orders");
   },
 };

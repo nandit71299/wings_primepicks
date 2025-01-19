@@ -1,7 +1,7 @@
 "use strict";
 const { Model, Sequelize } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class Users extends Model {
+  class ProductCategories extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,51 +9,35 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      ProductCategories.hasMany(models.Products, {
+        foreignKey: "category_id",
+      });
     }
   }
-  Users.init(
+  ProductCategories.init(
     {
-      first_name: {
+      name: {
         type: DataTypes.STRING,
         allowNull: false,
-      },
-      last_name: DataTypes.STRING,
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false, // NOT NULL constraint
-        unique: true, // Unique constraint
-      },
-      phone: { type: DataTypes.STRING, unique: true, allowNull: true },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false, // NOT NULL constraint
       },
       is_active: {
         type: DataTypes.BOOLEAN,
-        allowNull: false, // NOT NULL constraint
-        defaultValue: true, // Default value
-      },
-      role: {
-        type: DataTypes.ENUM("customer", "seller", "admin"),
-        allowNull: false,
-        defaultValue: "customer",
+        defaultValue: Sequelize.fn("NOW"), // Default value
       },
       createdAt: {
         type: DataTypes.DATE,
         defaultValue: Sequelize.fn("NOW"), // Default value
-        allowNull: false, // NOT NULL constraint
       },
       updatedAt: {
         type: DataTypes.DATE,
         defaultValue: Sequelize.fn("NOW"), // Default value
-        allowNull: false, // NOT NULL constraint
         onUpdate: Sequelize.fn("NOW"), // Update the updated_at timestamp when the record is updated.
       },
     },
     {
       sequelize,
-      modelName: "Users",
+      modelName: "ProductCategories",
     }
   );
-  return Users;
+  return ProductCategories;
 };

@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 const { Op } = require("sequelize");
 dotenv.config();
 
-const { User } = require("../models");
+const { Users } = require("../models");
 const jwt = require("jsonwebtoken");
 
 const register = async (req, res) => {
@@ -16,7 +16,7 @@ const register = async (req, res) => {
       password,
       Number(process.env.SALT_ROUNDS)
     );
-    const existingUser = await User.findOne({
+    const existingUser = await Users.findOne({
       where: { [Op.or]: [{ email: email }, { phone: phone }] },
     });
 
@@ -27,7 +27,7 @@ const register = async (req, res) => {
     }
 
     // Save user to database
-    const newUser = await User.create({
+    const newUser = await Users.create({
       first_name,
       last_name,
       email,
@@ -52,7 +52,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ where: { email } });
+    const user = await Users.findOne({ where: { email } });
     if (!user) {
       return res
         .status(401)
