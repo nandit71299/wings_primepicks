@@ -215,8 +215,33 @@ const updateOrderStatus = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const user = req.user;
+    const {
+      status, // Filter orders by status
+      sort_by_date, // Sort by date (asc/desc)
+      user_id, // Optional filter by user_id
+    } = req.query; // Extract query parameters
+
+    // Initialize where conditions
+    const whereConditions = {};
+
+    // Add user_id filter if provided
+    if (user_id) {
+      whereConditions.user_id = user_id;
+    }
+
+    // If the user is a seller, filter orders by products created by the seller
+    let responseOrders = [];
     if (user.role === "seller") {
-      const orders = await Orders.findAll({
+      whereConditions["$OrderItems.Product.created_by$"] = user.id;
+
+      // Add status filter if provided
+      if (status) {
+        whereConditions.status = status;
+      }
+
+      // Fetch orders based on the conditions
+      responseOrders = await Orders.findAll({
+        where: whereConditions,
         include: [
           {
             model: OrderItems,
@@ -231,13 +256,21 @@ const getAllOrders = async (req, res) => {
             ],
           },
         ],
+        order: sort_by_date ? [["createdAt", sort_by_date]] : [], // Sort by date if provided
       });
-      responseOrders = orders;
-    } else if (user.role === "customer") {
-      const allOrders = await Orders.findAll({
-        where: {
-          user_id: user.id,
-        },
+    }
+    // If the user is a customer, filter orders by the user's ID
+    else if (user.role === "customer") {
+      whereConditions.user_id = user.id; // Filter by the logged-in customer
+
+      // Add status filter if provided
+      if (status) {
+        whereConditions.status = status;
+      }
+
+      // Fetch orders based on the conditions
+      responseOrders = await Orders.findAll({
+        where: whereConditions,
         include: [
           {
             model: OrderItems,
@@ -254,9 +287,10 @@ const getAllOrders = async (req, res) => {
             attributes: ["id", "quantity"],
           },
         ],
+        order: sort_by_date ? [["createdAt", sort_by_date]] : [], // Sort by date if provided
       });
-      responseOrders = allOrders;
     }
+
     return res.send({ success: true, orders: responseOrders });
   } catch (error) {
     console.error(error);
