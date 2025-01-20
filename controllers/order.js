@@ -212,6 +212,7 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// TODO: REVIEW THIS BELOW API
 const getAllOrders = async (req, res) => {
   try {
     const user = req.user;
