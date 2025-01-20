@@ -15,6 +15,7 @@ module.exports = {
           model: "AuditLogs",
           key: "id",
         },
+        onDelete: "CASCADE",
       },
       field_name: {
         type: Sequelize.STRING,

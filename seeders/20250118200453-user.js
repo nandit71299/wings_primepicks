@@ -26,28 +26,27 @@ module.exports = {
         first_name: "Nick",
         last_name: "Thomas",
         email: "customer@primepicks.com",
-        password: hashedPasswords[1], // customer's hashed password
+        password: hashedPasswords[1],
         role: "customer",
       },
       {
         first_name: "John",
         last_name: "Doe",
         email: "admin@primepicks.com",
-        password: hashedPasswords[0], // admin's hashed password
+        password: hashedPasswords[0],
         role: "admin",
       },
       {
         first_name: "Haily",
         last_name: "English",
         email: "seller@primepicks.com",
-        password: hashedPasswords[2], // seller's hashed password
+        password: hashedPasswords[2],
         role: "seller",
       },
     ]);
   },
 
   async down(queryInterface, Sequelize) {
-    // Add commands to revert seed here if necessary
     await queryInterface.bulkDelete("User", null, {});
   },
 };

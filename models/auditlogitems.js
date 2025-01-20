@@ -28,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
           model: "AuditLogs",
           key: "id",
         },
+        onDelete: "CASCADE",
       },
       field_name: {
         type: Sequelize.STRING,
@@ -39,7 +40,6 @@ module.exports = (sequelize, DataTypes) => {
       new_value: {
         type: Sequelize.TEXT,
       },
-
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

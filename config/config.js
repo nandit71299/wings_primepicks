@@ -8,6 +8,7 @@ module.exports = {
     database: process.env.DB_DATABASE_DEV || "primepicks_development",
     host: process.env.DB_HOST_DEV || "127.0.0.1",
     dialect: "mysql", // Explicitly set the dialect
+    logging: false,
   },
   test: {
     username: process.env.DB_USERNAME_TEST || "root",

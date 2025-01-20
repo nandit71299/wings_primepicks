@@ -22,16 +22,16 @@ module.exports = (sequelize, DataTypes) => {
       },
       is_active: {
         type: DataTypes.BOOLEAN,
-        defaultValue: Sequelize.fn("NOW"), // Default value
+        defaultValue: Sequelize.fn("NOW"),
       },
       createdAt: {
         type: DataTypes.DATE,
-        defaultValue: Sequelize.fn("NOW"), // Default value
+        defaultValue: Sequelize.fn("NOW"),
       },
       updatedAt: {
         type: DataTypes.DATE,
-        defaultValue: Sequelize.fn("NOW"), // Default value
-        onUpdate: Sequelize.fn("NOW"), // Update the updated_at timestamp when the record is updated.
+        defaultValue: Sequelize.fn("NOW"),
+        onUpdate: Sequelize.fn("NOW"),
       },
     },
     {

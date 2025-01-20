@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       });
     }
   }
+  //TODO: Add SellerID in here
   Orders.init(
     {
       id: {

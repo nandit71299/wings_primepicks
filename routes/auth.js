@@ -1,11 +1,10 @@
 const express = require("express");
-const router = express.Router(); // Use Router instance
+const router = express.Router();
 const { validationResult } = require("express-validator");
 const authController = require("../controllers/auth");
 const { loginValidator, registerValidator } = require("../validators/auth");
 const handleValidationErrors = require("../middlewares/handleValidation");
 
-// Define routes within the auth router
 router.post(
   "/login",
   loginValidator,
@@ -19,4 +18,4 @@ router.post(
   authController.register
 );
 
-module.exports = router; // Export the router
+module.exports = router;
