@@ -136,41 +136,54 @@ const getAllStoreProducts = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
   try {
-    const { category, price_min, price_max, name } = req.query; // Get query parameters
+    const {
+      category,
+      price_min,
+      price_max,
+      name,
+      new_arrivals,
+      sort_by_price,
+    } = req.query;
 
-    // Start with the base conditions: active and not deleted
     const whereConditions = {
       isDeleted: false,
       isActive: true,
     };
 
-    // Add category filter if provided
     if (category) {
-      whereConditions.category_id = category; // Assuming category is stored as category_id
+      whereConditions.category_id = category;
     }
 
-    // Add price range filter if provided
+    if (new_arrivals) {
+      whereConditions.createdAt = {
+        [Op.gt]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      };
+    }
+
     if (price_min && price_max) {
-      // If both min and max prices are provided, use Op.between
       whereConditions.price = { [Op.between]: [price_min, price_max] };
     } else if (price_min) {
-      // If only min price is provided, filter products greater than or equal to price_min
       whereConditions.price = { [Op.gte]: price_min };
     } else if (price_max) {
-      // If only max price is provided, filter products less than or equal to price_max
       whereConditions.price = { [Op.lte]: price_max };
     }
 
-    // Add name search filter if provided
     if (name) {
-      whereConditions.name = { [Op.like]: `%${name}%` }; // Search for products by name using LIKE
+      whereConditions.name = { [Op.like]: `%${name}%` };
     }
 
-    // Fetch the products with the applied filters
+    let order = [];
+    if (sort_by_price) {
+      if (sort_by_price === "asc") {
+        order = [["price", "ASC"]];
+      } else if (sort_by_price === "desc") {
+        order = [["price", "DESC"]];
+      }
+    }
+
     const products = await Products.findAll({
       where: whereConditions,
-      limit: 20, // Optionally, limit to a certain number of products per request
-      offset: 0, // Adjust for pagination if needed
+      order: order,
     });
 
     return res.status(200).send({ success: true, products });
