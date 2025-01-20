@@ -12,13 +12,15 @@ const {
   deleteProduct,
 } = require("../validators/products");
 
+//Customer
 router.get("/", productsController.getAllProducts);
-router.patch(
-  "/:productId",
-  authMiddleware,
-  updateProduct,
+
+//Commons
+router.get(
+  "/:sellerId/:productId",
+  getStoreProduct,
   handleValidationErrors,
-  productsController.updateProduct
+  productsController.getStoreProduct
 );
 router.get(
   "/:sellerId",
@@ -26,11 +28,14 @@ router.get(
   handleValidationErrors,
   productsController.getAllStoreProducts
 );
-router.get(
-  "/:sellerId/:productId",
-  getStoreProduct,
+
+//Seller
+router.patch(
+  "/:productId",
+  authMiddleware,
+  updateProduct,
   handleValidationErrors,
-  productsController.getStoreProduct
+  productsController.updateProduct
 );
 router.post(
   "/",

@@ -5,6 +5,7 @@ const authController = require("../controllers/auth");
 const { loginValidator, registerValidator } = require("../validators/auth");
 const handleValidationErrors = require("../middlewares/handleValidation");
 
+//Common
 router.post(
   "/login",
   loginValidator,

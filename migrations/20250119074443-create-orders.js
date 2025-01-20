@@ -36,7 +36,8 @@ module.exports = {
           "Processing",
           "Shipped",
           "Delivered",
-          "Cancelled"
+          "Cancelled",
+          "Refunded"
         ),
         defaultValue: "Pending",
         allowNull: false,

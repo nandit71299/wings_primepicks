@@ -31,6 +31,7 @@ module.exports = (sequelize, DataTypes) => {
           key: "id",
         },
       },
+
       subtotal: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
@@ -49,7 +50,8 @@ module.exports = (sequelize, DataTypes) => {
           "Processing",
           "Shipped",
           "Delivered",
-          "Cancelled"
+          "Cancelled",
+          "Refunded"
         ),
         defaultValue: "Pending",
         allowNull: false,

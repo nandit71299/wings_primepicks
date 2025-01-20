@@ -124,18 +124,52 @@ const getAllStoreProducts = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
   try {
+    const { category, price_min, price_max, name } = req.query; // Get query parameters
+
+    // Start with the base conditions: active and not deleted
+    const whereConditions = {
+      isDeleted: false,
+      isActive: true,
+    };
+
+    // Add category filter if provided
+    if (category) {
+      whereConditions.category_id = category; // Assuming category is stored as category_id
+    }
+
+    // Add price range filter if provided
+    if (price_min && price_max) {
+      // If both min and max prices are provided, use Op.between
+      whereConditions.price = { [Op.between]: [price_min, price_max] };
+    } else if (price_min) {
+      // If only min price is provided, filter products greater than or equal to price_min
+      whereConditions.price = { [Op.gte]: price_min };
+    } else if (price_max) {
+      // If only max price is provided, filter products less than or equal to price_max
+      whereConditions.price = { [Op.lte]: price_max };
+    }
+
+    // Add name search filter if provided
+    if (name) {
+      whereConditions.name = { [Op.like]: `%${name}%` }; // Search for products by name using LIKE
+    }
+
+    // Fetch the products with the applied filters
     const products = await Products.findAll({
-      where: {
-        isDeleted: false,
-        isActive: true,
-      },
+      where: whereConditions,
+      limit: 20, // Optionally, limit to a certain number of products per request
+      offset: 0, // Adjust for pagination if needed
     });
-    res.status(200).send({ success: true, products });
+
+    return res.status(200).send({ success: true, products });
   } catch (error) {
     console.error(error);
-    res.status(500).send({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .send({ success: false, message: "Internal Server Error" });
   }
 };
+
 const updateProduct = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
