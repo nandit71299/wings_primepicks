@@ -268,12 +268,23 @@ const getAllOrders = async (req, res) => {
 
 const getOrderInfo = async (req, res) => {
   try {
-    const order_id = req.params.order_id;
+    const {
+      user,
+      params: { order_id },
+    } = req;
+
+    const whereConditions = { id: order_id };
+
+    if (user.role === "seller") {
+      whereConditions["$OrderItems.Product.created_by$"] = {
+        [Op.eq]: user.id,
+      };
+    } else if (user.role === "customer") {
+      whereConditions.user_id = user.id;
+    }
 
     const order = await Orders.findOne({
-      where: {
-        id: order_id,
-      },
+      where: whereConditions,
       include: [
         {
           model: OrderItems,
@@ -282,11 +293,19 @@ const getOrderInfo = async (req, res) => {
             {
               model: Products,
               attributes: ["id", "name", "price"],
+              required: user.role === "seller",
             },
           ],
         },
       ],
     });
+
+    if (!order) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Order not found" });
+    }
+
     return res.send({ success: true, order });
   } catch (error) {
     console.error(error);
