@@ -9,6 +9,7 @@ const {
   ProductCategories,
   AuditLogs,
   AuditLogItems,
+  SystemPreferences,
 } = require("../models");
 
 const createProduct = async (req, res) => {
@@ -35,7 +36,18 @@ const createProduct = async (req, res) => {
         .status(404)
         .send({ success: false, message: "Category not found" });
     }
-
+    const checkPreferences = await SystemPreferences.findOne({
+      where: { name: "max_price" },
+    });
+    if (checkPreferences) {
+      const maxPrice = parseFloat(checkPreferences.value);
+      if (price > maxPrice) {
+        return res.status(400).send({
+          success: false,
+          message: `Price must not exceed ${maxPrice}`,
+        });
+      }
+    }
     const product = await Products.create(
       {
         name,

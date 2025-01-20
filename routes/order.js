@@ -9,7 +9,7 @@ const handleValidationErrors = require("../middlewares/handleValidation");
 // Customer
 router.get("/estimate", authMiddleware, orderController.getOrderEstimate);
 router.post("/", authMiddleware, orderController.createOder);
-router.get("/history");
+// router.get("/history");
 
 //Seller
 router.post(
@@ -19,5 +19,8 @@ router.post(
   handleValidationErrors,
   orderController.updateOrderStatus
 );
+
+router.get("/", authMiddleware, orderController.getAllOrders);
+router.get("/:order_id", authMiddleware, orderController.getOrderInfo);
 
 module.exports = router;

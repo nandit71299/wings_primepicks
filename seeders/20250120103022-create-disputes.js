@@ -12,20 +12,19 @@ module.exports = {
      *   isBetaMember: false
      * }], {});
      */
-    await queryInterface.bulkInsert("Orders", [
+    queryInterface.bulkInsert("Disputes", [
       {
+        order_id: 1,
         user_id: 1,
-        subtotal: 34.98,
-        tax: 4,
-        total: 38.98,
-        status: "Pending",
+        reason: "Product is not as described",
+        status: "open",
       },
       {
-        user_id: 1,
-        subtotal: 14.99,
-        tax: 2,
-        total: 16.99,
-        status: "Shipped",
+        order_id: 2,
+        user_id: 2,
+        reason: "Item arrived damaged",
+        status: "resolved",
+        resolution: "Item has been repaired and will be delivered soon",
       },
     ]);
   },

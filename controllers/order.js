@@ -11,6 +11,7 @@ const {
   CartItems,
   Orders,
   OrderItems,
+  Sequelize,
 } = require("../models");
 
 const getOrderEstimate = async (req, res) => {
@@ -77,6 +78,7 @@ const getOrderEstimate = async (req, res) => {
       .send({ success: false, message: "Internal server error" });
   }
 };
+
 const createOder = async (req, res) => {
   try {
     const user = req.user;
@@ -213,12 +215,91 @@ const updateOrderStatus = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const user = req.user;
-    if (user.role === "admin") {
-      const allOrders = await Orders.findAll({
-        where: {},
+    if (user.role === "seller") {
+      const orders = await Orders.findAll({
+        include: [
+          {
+            model: OrderItems,
+            include: [
+              {
+                model: Products,
+                where: {
+                  created_by: user.id,
+                },
+                attributes: ["id", "name", "price"],
+              },
+            ],
+          },
+        ],
       });
-      return res.send({ success: true, orders: allOrders });
+      responseOrders = orders;
+    } else if (user.role === "customer") {
+      const allOrders = await Orders.findAll({
+        where: {
+          user_id: user.id,
+        },
+        include: [
+          {
+            model: OrderItems,
+            include: [
+              {
+                model: Products,
+                where: {
+                  // Matching the 'product_id' from 'OrderItems' to 'Products.id'
+                  id: Sequelize.col("OrderItems.product_id"),
+                },
+                attributes: ["id", "name", "price"],
+              },
+            ],
+            attributes: ["id", "quantity"],
+          },
+        ],
+      });
+      responseOrders = allOrders;
     }
-  } catch (error) {}
+    return res.send({ success: true, orders: responseOrders });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .send({ success: false, message: "Internal server error" });
+  }
 };
-module.exports = { getOrderEstimate, createOder, updateOrderStatus };
+
+const getOrderInfo = async (req, res) => {
+  try {
+    const order_id = req.params.order_id;
+
+    const order = await Orders.findOne({
+      where: {
+        id: order_id,
+      },
+      include: [
+        {
+          model: OrderItems,
+          attributes: ["id", "order_id", "product_id", "quantity"],
+          include: [
+            {
+              model: Products,
+              attributes: ["id", "name", "price"],
+            },
+          ],
+        },
+      ],
+    });
+    return res.send({ success: true, order });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .send({ success: false, message: "Internal server error" });
+  }
+};
+
+module.exports = {
+  getOrderEstimate,
+  createOder,
+  updateOrderStatus,
+  getAllOrders,
+  getOrderInfo,
+};

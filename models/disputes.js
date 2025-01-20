@@ -1,7 +1,9 @@
 "use strict";
-const { Model, Sequelize } = require("sequelize");
+const { Model } = require("sequelize");
+const { Sequelize } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
-  class Orders extends Model {
+  class Disputes extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,72 +11,61 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      Orders.belongsTo(models.Users, {
-        foreignKey: "user_id",
-      });
-      Orders.hasMany(models.OrderItems, {
-        foreignKey: "order_id",
-      });
     }
   }
-  //TODO: Add SellerID in here
-  Orders.init(
+  Disputes.init(
     {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER,
+        type: DataTypes.INTEGER,
+      },
+      order_id: {
+        type: DataTypes.INTEGER,
+        references: {
+          model: "Orders",
+          key: "id",
+        },
+        allowNull: false,
       },
       user_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
+        type: DataTypes.INTEGER,
         references: {
           model: "Users",
           key: "id",
         },
-      },
-
-      subtotal: {
-        type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
       },
-      tax: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      total: {
-        type: Sequelize.DECIMAL(10, 2),
+      reason: {
+        type: DataTypes.STRING,
         allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM(
-          "Pending",
-          "Processing",
-          "Shipped",
-          "Delivered",
-          "Cancelled",
-          "Refunded"
-        ),
-        defaultValue: "Pending",
+        type: DataTypes.ENUM("open", "resolved"),
+        defaultValue: "open",
         allowNull: false,
+      },
+      resolution: {
+        type: DataTypes.TEXT,
+        allowNull: true,
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE,
+        type: DataTypes.DATE,
         defaultValue: Sequelize.fn("NOW"),
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE,
+        type: DataTypes.DATE,
         defaultValue: Sequelize.fn("NOW"),
         onUpdate: Sequelize.fn("NOW"),
       },
     },
     {
       sequelize,
-      modelName: "Orders",
+      modelName: "Disputes",
     }
   );
-  return Orders;
+  return Disputes;
 };

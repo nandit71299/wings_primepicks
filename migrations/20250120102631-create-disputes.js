@@ -2,47 +2,42 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("Orders", {
+    await queryInterface.createTable("Disputes", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
+      order_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Orders",
+          key: "id",
+        },
+        allowNull: false,
+      },
       user_id: {
         type: Sequelize.INTEGER,
-        allowNull: false,
         references: {
           model: "Users",
           key: "id",
         },
-        onDelete: "CASCADE",
-      },
-      subtotal: {
-        type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
       },
-      tax: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      total: {
-        type: Sequelize.DECIMAL(10, 2),
+      reason: {
+        type: Sequelize.STRING,
         allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM(
-          "Pending",
-          "Processing",
-          "Shipped",
-          "Delivered",
-          "Cancelled",
-          "Refunded"
-        ),
-        defaultValue: "Pending",
+        type: Sequelize.ENUM("open", "resolved"),
+        defaultValue: "open",
         allowNull: false,
       },
-
+      resolution: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -57,6 +52,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Orders");
+    await queryInterface.dropTable("Disputes");
   },
 };

@@ -22,7 +22,7 @@ module.exports = {
         total: 21.99,
       },
       {
-        order_id: 1,
+        order_id: 2,
         product_id: 2,
         quantity: 1,
         subtotal: 14.99,
