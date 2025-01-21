@@ -1,3 +1,4 @@
+const { where } = require("sequelize");
 const {
   Products,
   Users,
@@ -7,6 +8,8 @@ const {
   Carts,
   CartItems,
   Sequelize,
+  sequelize,
+  ProductCategories,
 } = require("../models");
 
 const getCustomerDashboard = (req, res) => {
@@ -15,166 +18,362 @@ const getCustomerDashboard = (req, res) => {
   } catch (error) {}
 };
 
-const getSellerDashboard = (req, res) => {
+const getSellerDashboard = async (req, res) => {
   try {
     const user = req.user;
-    // const getAllOrders = async (req, res) => {
-    //   try {
-    //     const user = req.user; // Logged-in user
-    //     const whereConditions = {}; // Initialize where conditions
+    if (user.role !== "seller") {
+      return res.status(403).send({ success: false, message: "Unauthorized" });
+    }
 
-    //     if (user.role === "seller") {
-    //       whereConditions["$OrderItems.Products.created_by$"] = user.id; // Filter orders where products are created by the seller
+    // const orderStatuses = ["Pending", "Cancelled", "Refunded"]; // Example statuses
 
-    //       // Fetch orders for the seller
-    //       const orders = await Orders.findAll({
-    //         where: whereConditions,
-    //         include: [
-    //           {
-    //             model: OrderItems,
-    //             include: [
-    //               {
-    //                 model: Products,
-    //                 attributes: ["id", "name", "price", "created_by"], // Fetch relevant product attributes
-    //                 required: true, // Ensures the product is part of the result
-    //               },
-    //             ],
-    //           },
-    //         ],
-    //       });
+    const totalOrdersByStatus = await Orders.findAll({
+      attributes: [
+        // Count of orders for each status (pending, cancelled, refunded, etc.)
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Pending' THEN 1 ELSE NULL END"
+            )
+          ),
+          "count_pending",
+        ],
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Cancelled' THEN 1 ELSE NULL END"
+            )
+          ),
+          "count_cancelled",
+        ],
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Refunded' THEN 1 ELSE NULL END"
+            )
+          ),
+          "count_refunded",
+        ],
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Delivered' THEN 1 ELSE NULL END"
+            )
+          ),
+          "count_delivered",
+        ],
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Shipped' THEN 1 ELSE NULL END"
+            )
+          ),
+          "count_shipped",
+        ],
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Processing' THEN 1 ELSE NULL END"
+            )
+          ),
+          "count_processing",
+        ],
 
-    //       return res.send({ success: true, orders });
-    //     }
-    //     else if (user.role === "customer") {
-    //       // Fetch orders for the customer
-    //       const orders = await Orders.findAll({
-    //         where: {
-    //           user_id: user.id, // Filter by the customer's user_id
-    //         },
-    //         include: [
-    //           {
-    //             model: OrderItems,
-    //             include: [
-    //               {
-    //                 model: Products,
-    //                 attributes: ["id", "name", "price", "created_by"],
-    //                 required: true,
-    //                 where: {
-    //                   created_by: user.id, // Ensure the product was created by the seller (if the customer is looking at their own order)
-    //                 },
-    //               },
-    //             ],
-    //           },
-    //         ],
-    //       });
+        // Sum of total for each status (pending, cancelled, refunded, etc.)
+        [
+          Sequelize.fn(
+            "SUM",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Pending' THEN Orders.total ELSE 0 END"
+            )
+          ),
+          "total_pending",
+        ],
+        [
+          Sequelize.fn(
+            "SUM",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Cancelled' THEN Orders.total ELSE 0 END"
+            )
+          ),
+          "total_cancelled",
+        ],
+        [
+          Sequelize.fn(
+            "SUM",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Refunded' THEN Orders.total ELSE 0 END"
+            )
+          ),
+          "total_refunded",
+        ],
+        [
+          Sequelize.fn(
+            "SUM",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Delivered' THEN Orders.total ELSE 0 END"
+            )
+          ),
+          "total_delivered",
+        ],
+        [
+          Sequelize.fn(
+            "SUM",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Shipped' THEN Orders.total ELSE 0 END"
+            )
+          ),
+          "total_shipped",
+        ],
+        [
+          Sequelize.fn(
+            "SUM",
+            Sequelize.literal(
+              "CASE WHEN Orders.status = 'Processing' THEN Orders.total ELSE 0 END"
+            )
+          ),
+          "total_processing",
+        ],
+      ],
+      include: [
+        {
+          model: OrderItems,
+          as: "order_items",
+          attributes: [],
+          include: [
+            {
+              model: Products,
+              as: "product",
+              where: { created_by: user.id }, // Filter by seller's products
+              attributes: [], // Don't return product details, just aggregate
+            },
+          ],
+          required: true, // Ensures that only orders with order_items are included
+        },
+      ],
+    });
 
-    //       return res.send({ success: true, orders });
-    //     }
+    const productsWithOrderCount = await Products.findAll({
+      where: {
+        created_by: user.id, // Filter products created by the seller
+      },
+      attributes: [
+        "id",
+        "name",
+        [
+          Sequelize.fn("COUNT", Sequelize.col("order_items.id")), // Count of OrderItems related to the product
+          "order_count", // Alias for the count of orders
+        ],
+      ],
+      include: [
+        {
+          model: OrderItems,
+          as: "order_items", // Alias for the order items
+          attributes: [], // Don't return any attributes from OrderItems
+          include: [
+            {
+              model: Orders,
+              as: "order", // Alias for the Orders association
+              attributes: [], // Don't need any attributes from Orders here
+            },
+          ],
+          required: true, // Ensures that only products with order items are included
+        },
+      ],
+      group: ["Products.id"], // Group by the product ID so that we can get a count for each product
+    });
 
-    //     return res.status(400).send({ success: false, message: "Invalid role" });
-    //   } catch (error) {
-    //     console.error(error);
-    //     return res.status(500).send({ success: false, message: "Internal server error" });
-    //   }
-    // };
-  } catch (error) {}
+    const topProducts = await Products.findAll({
+      attributes: [
+        "id", // Product ID
+        "name", // Product Name
+        [Sequelize.fn("COUNT", Sequelize.col("order_items.id")), "order_count"], // Count of order items
+      ],
+      include: [
+        {
+          model: OrderItems, // Joining OrderItems table
+          as: "order_items", // Alias used for the relationship between Products and OrderItems
+          attributes: [], // No specific attributes from OrderItems, we only need to count the IDs
+          required: true, // Inner join to ensure we only include products that have order items
+        },
+      ],
+      group: ["Products.id"],
+    });
+
+    res.json({
+      success: true,
+      totalOrdersByStatus: totalOrdersByStatus,
+      productsWithOrderCount: productsWithOrderCount,
+      popularProducts: topProducts,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
 };
 
 const getAdminDashboard = async (req, res) => {
   try {
     const user = req.user;
-    let responsePayload = {};
+    if (user.role !== "admin") {
+      return res.status(403).send({ success: false, message: "Unauthorized" });
+    }
 
-    // Fetch products created by the logged-in user
-    const products = await Products.findAll({
-      where: { created_by: user.id },
-    });
-    responsePayload.products = products;
-
-    // Fetch all orders, and calculate the total sum of orders in the same query
-    const orders = await Orders.findAll({
-      include: [
-        {
-          model: OrderItems,
-          include: [
-            {
-              model: Products,
-              required: true,
-              attributes: ["id", "name", "price"],
-            },
-          ],
-        },
-      ],
-      attributes: [
-        "id",
-        "user_id",
-        "status",
-        "total",
-        "createdAt",
-        [Sequelize.fn("SUM", Sequelize.literal("Orders.total")), "total_sum"], // Sum of order totals
-      ],
-      group: ["Orders.id"], // Group by order ID to sum totals correctly
+    const users = await Users.findAll({
+      attributes: ["id", "first_name", "last_name", "email", "role"],
+      order: [["createdAt", "DESC"]],
+      where: {
+        role: { [Sequelize.Op.notIn]: ["admin"] },
+      },
+      limit: 5,
     });
 
-    // Fetch disputes, separated into open (resolution is null) and closed (resolution is not null)
-    const disputes = await Disputes.findAll({
+    const usersCount = await Users.findAll({
       attributes: [
         [
-          Sequelize.literal(
-            'CASE WHEN resolution IS NULL THEN "open" ELSE "closed" END'
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal("CASE WHEN role = 'seller' THEN 1 END")
           ),
-          "status",
+          "total_sellers",
         ],
-        [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.literal("CASE WHEN role = 'customer' THEN 1 END")
+          ),
+          "total_customers",
+        ],
       ],
-      group: [
-        Sequelize.literal(
-          'CASE WHEN resolution IS NULL THEN "open" ELSE "closed" END'
-        ),
-      ], // Group by "open" vs "closed"
+      where: {
+        role: {
+          [Sequelize.Op.in]: ["seller", "customer"], // Filter for sellers and customers only
+        },
+      },
     });
 
-    // Process disputes into open and closed arrays
-    const openDisputes = disputes.find((d) => d.status == "open");
-    const closedDisputes = disputes.find((d) => d.status == "closed");
-
-    responsePayload.orders = orders;
-    responsePayload.total_order_sum = orders.reduce(
-      (sum, order) => sum + parseFloat(order.total),
-      0
-    ); // Calculate sum from orders
-    responsePayload.disputes = {
-      open: openDisputes, // Open disputes count
-      closed: closedDisputes, // Closed disputes count
-    };
-
-    // Fetch all users
-    const users = await Users.findAll();
-    responsePayload.users = users;
-
-    // Fetch abandoned carts with cart items and associated products
-    const abandoned_carts = await Carts.findAll({
+    const recentPurchases = await Orders.findAll({
+      limit: 5,
       include: [
         {
-          model: CartItems,
+          model: Users,
+          as: "user",
+          attributes: ["id", "first_name", "last_name", "email"],
+        },
+        {
+          model: OrderItems,
+          as: "order_items",
+          attributes: [],
           include: [
             {
               model: Products,
-              required: true,
+              as: "product",
               attributes: ["id", "name", "price"],
             },
           ],
         },
       ],
     });
-    responsePayload.abandoned_carts = abandoned_carts;
+    // const popularProducts = await Products.findAll({
+    //   attributes: [
+    //     "id",
+    //     "name",
+    //     [
+    //       Sequelize.fn("COUNT", Sequelize.col("OrderItems.product_id")), // Use the alias here
+    //       "total_orders",
+    //     ],
+    //   ],
+    //   include: [
+    //     {
+    //       model: OrderItems,
+    //       as: "order_item", // Correct alias for OrderItems
+    //       attributes: ["id", "product_id"],
+    //       include: [
+    //         {
+    //           model: Orders,
+    //           as: "order",
+    //           attributes: ["id"],
+    //         },
+    //       ],
+    //     },
+    //   ],
+    //   group: ["Products.id"],
+    //   order: [[Sequelize.literal("total_orders"), "DESC"]],
+    //   limit: 5,
+    // });
+    const [popularProducts, metaData] = await sequelize.query(`
+      SELECT 
+        p.id AS product_id,
+        p.name AS product_name,
+        COUNT(oi.product_id) AS total_orders
+      FROM 
+        Products p
+      JOIN 
+        OrderItems oi ON p.id = oi.product_id
+      JOIN 
+        Orders o ON oi.order_id = o.id
+      GROUP BY 
+        p.id
+      ORDER BY 
+        total_orders DESC
+      LIMIT 5;
+    `);
 
-    return res.send({ success: true, data: responsePayload });
+    const popularProductCategories = await ProductCategories.findAll({
+      attributes: [
+        "id",
+        "name",
+        [
+          Sequelize.fn(
+            "COUNT",
+            Sequelize.col("Products.order_item.order.id") // Count orders related to products in this category
+          ),
+          "total_orders",
+        ],
+      ],
+      include: [
+        {
+          model: Products,
+          attributes: [],
+          include: [
+            {
+              model: OrderItems,
+              as: "order_item",
+              attributes: [],
+              include: [
+                {
+                  model: Orders,
+                  as: "order",
+                  attributes: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      group: ["ProductCategories.id"], // Group by ProductCategory to count orders per category
+      order: [[Sequelize.literal("total_orders"), "DESC"]], // Order by the total orders in descending order
+    });
+
+    res.json({
+      success: true,
+      data: {
+        usersCount: usersCount,
+        recentUsers: users,
+        recentPurchases: recentPurchases,
+        popularProducts: popularProducts,
+        popularProductCategories: popularProductCategories,
+      },
+    });
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .send({ success: false, message: "Internal server error" });
+    res.status(500).send({ success: false, message: "Internal Server Error" });
   }
 };
 

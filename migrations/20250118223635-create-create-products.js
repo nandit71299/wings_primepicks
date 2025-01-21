@@ -39,6 +39,11 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
       },
+      status: {
+        type: Sequelize.ENUM("Approved", "Disapproved", "Pending Approval"),
+        defaultValue: "Pending Approval",
+        allowNull: false,
+      },
       isDeleted: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,

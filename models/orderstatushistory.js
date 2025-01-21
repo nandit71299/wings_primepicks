@@ -1,7 +1,8 @@
 "use strict";
-const { Model, Sequelize } = require("sequelize");
+const { Model } = require("sequelize");
+const { Sequelize } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class Orders extends Model {
+  class OrderStatusHistory extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,22 +10,9 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      Orders.belongsTo(models.Users, {
-        foreignKey: "user_id",
-        as: "user",
-      });
-      Orders.hasMany(models.OrderItems, {
-        foreignKey: "order_id",
-        as: "order_items",
-      });
-      Orders.hasMany(models.Disputes, {
-        foreignKey: "order_id",
-        as: "disputes",
-      });
     }
   }
-  //TODO: Add SellerID in here
-  Orders.init(
+  OrderStatusHistory.init(
     {
       id: {
         allowNull: false,
@@ -32,38 +20,41 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      user_id: {
+      order_id: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        references: {
+          model: "Orders",
+          key: "id",
+        },
+      },
+      old_status: {
+        type: Sequelize.ENUM(
+          "Pending",
+          "Cancelled",
+          "Refunded",
+          "Delivered",
+          "Shipped",
+          "Processing"
+        ),
+        defaultValue: "Pending",
+      },
+      new_status: {
+        type: Sequelize.ENUM(
+          "Pending",
+          "Cancelled",
+          "Refunded",
+          "Delivered",
+          "Shipped",
+          "Processing"
+        ),
+        defaultValue: "Pending",
+      },
+      updated_by: {
+        type: Sequelize.INTEGER,
         references: {
           model: "Users",
           key: "id",
         },
-      },
-
-      subtotal: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      tax: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      total: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      status: {
-        type: Sequelize.ENUM(
-          "Pending",
-          "Processing",
-          "Shipped",
-          "Delivered",
-          "Cancelled",
-          "Refunded"
-        ),
-        defaultValue: "Pending",
-        allowNull: false,
       },
       createdAt: {
         allowNull: false,
@@ -79,8 +70,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: "Orders",
+      modelName: "OrderStatusHistory",
     }
   );
-  return Orders;
+  return OrderStatusHistory;
 };

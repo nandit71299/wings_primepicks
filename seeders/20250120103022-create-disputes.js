@@ -20,6 +20,12 @@ module.exports = {
         status: "open",
       },
       {
+        order_id: 1,
+        user_id: 1,
+        reason: "It's not resolved yet",
+        status: "open",
+      },
+      {
         order_id: 2,
         user_id: 2,
         reason: "Item arrived damaged",

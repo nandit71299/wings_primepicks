@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
       });
       Products.hasMany(models.OrderItems, {
         foreignKey: "product_id",
+        as: "order_items",
       });
     }
   }
@@ -55,6 +56,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       available_quantity: {
         type: Sequelize.INTEGER,
+        allowNull: false,
+      },
+      status: {
+        type: Sequelize.ENUM("Approved", "Disapproved", "Pending Approval"),
+        defaultValue: "Pending Approval",
         allowNull: false,
       },
       isDeleted: {

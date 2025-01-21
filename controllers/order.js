@@ -11,6 +11,7 @@ const {
   CartItems,
   Orders,
   OrderItems,
+  OrderStatusHistory,
   Sequelize,
 } = require("../models");
 
@@ -180,8 +181,6 @@ const updateOrderStatus = async (req, res) => {
         .status(404)
         .send({ success: false, message: "Order not found" });
     }
-
-    // If the order status is already the same, no update is necessary
     if (findOrder.status === status) {
       return res.status(400).json({
         success: false,
@@ -189,13 +188,19 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Update the order status
+    await OrderStatusHistory.create(
+      {
+        order_id,
+        old_status: findOrder.status,
+        updated_by: user.id,
+        new_status: status,
+      },
+      { transaction }
+    );
     findOrder.status = status;
 
-    // Save the order status update within the transaction
     await findOrder.save({ transaction });
 
-    // Commit the transaction
     await transaction.commit();
 
     return res.send({
@@ -203,7 +208,6 @@ const updateOrderStatus = async (req, res) => {
       message: "Order status updated successfully",
     });
   } catch (error) {
-    // Rollback transaction in case of an error
     await transaction.rollback();
     console.error(error);
     return res
@@ -216,13 +220,8 @@ const updateOrderStatus = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const user = req.user;
-    const {
-      status, // Filter orders by status
-      sort_by_date, // Sort by date (asc/desc)
-      user_id, // Optional filter by user_id
-    } = req.query; // Extract query parameters
+    const { status, sort_by_date, user_id } = req.query;
 
-    // Initialize where conditions
     const whereConditions = {};
 
     // Add user_id filter if provided
