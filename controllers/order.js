@@ -80,67 +80,105 @@ const getOrderEstimate = async (req, res) => {
   }
 };
 
-const createOder = async (req, res) => {
+const createOrder = async (req, res) => {
   try {
     const user = req.user;
+
+    // Step 1: Find the user's cart
     const findCart = await Carts.findOne({
       where: { user_id: user.id },
     });
+
     if (!findCart) {
       return res
         .status(404)
         .send({ success: false, message: "Cart not found" });
     }
+
+    // Step 2: Find all items in the user's cart
     const findCartItems = await CartItems.findAll({
       where: { cart_id: findCart.id },
     });
+
     if (findCartItems.length === 0) {
       return res
         .status(404)
         .send({ success: false, message: "No products found in cart" });
     }
+
+    // Step 3: Get the list of product IDs from the cart items
     const productIds = findCartItems.map((item) => item.product_id);
+
+    // Step 4: Get product details from the database
     const findProducts = await Products.findAll({
       where: { id: productIds },
     });
+
     const productMap = findProducts.reduce((acc, product) => {
       acc[product.id] = product;
       return acc;
     }, {});
+
+    // Step 5: Check if there is enough stock for each product in the cart
+    for (const item of findCartItems) {
+      const product = productMap[item.product_id];
+      if (product && item.quantity > product.available_quantity) {
+        return res.status(400).send({
+          success: false,
+          message: `Not enough stock for product: ${product.name}`,
+        });
+      }
+    }
+
     let subtotal = 0;
     let tax = 0;
+
+    // Step 6: Calculate subtotal, tax, and total for the order
     for (const item of findCartItems) {
       const product = productMap[item.product_id];
       if (product) {
         subtotal += product.price * item.quantity;
         tax += product.price * item.quantity * 0.18;
       }
+    }
 
-      const newOrder = await Orders.create({
-        user_id: user.id,
-        subtotal: subtotal.toFixed(2),
-        tax: tax.toFixed(2),
-        total: (subtotal + tax).toFixed(2),
-      });
+    // Step 7: Create the order
+    const newOrder = await Orders.create({
+      user_id: user.id,
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      total: (subtotal + tax).toFixed(2),
+    });
 
-      for (const item of findCartItems) {
-        const product = productMap[item.product_id];
-        if (product) {
-          await OrderItems.create({
-            order_id: newOrder.id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            subtotal: product.price * item.quantity,
-            tax: product.price * item.quantity * 0.18,
-            total: (
-              product.price * item.quantity +
-              product.price * item.quantity * 0.18
-            ).toFixed(2),
-          });
-        }
+    // Step 8: Create order items for each cart item
+    for (const item of findCartItems) {
+      const product = productMap[item.product_id];
+      if (product) {
+        await OrderItems.create({
+          order_id: newOrder.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          subtotal: product.price * item.quantity,
+          tax: product.price * item.quantity * 0.18,
+          total: (
+            product.price * item.quantity +
+            product.price * item.quantity * 0.18
+          ).toFixed(2),
+        });
+
+        // Step 9: Deduct the product quantity after order creation
+        await Products.update(
+          {
+            available_quantity: product.available_quantity - item.quantity,
+          },
+          { where: { id: product.id } }
+        );
       }
     }
+
+    // Step 10: Remove items from the cart after the order is successfully created
     await CartItems.destroy({ where: { cart_id: findCart.id } });
+
     res.send({ success: true, message: "Order created successfully" });
   } catch (error) {
     console.error(error);
@@ -351,7 +389,7 @@ const getOrderInfo = async (req, res) => {
 
 module.exports = {
   getOrderEstimate,
-  createOder,
+  createOrder,
   updateOrderStatus,
   getAllOrders,
   getOrderInfo,

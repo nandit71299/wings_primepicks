@@ -63,6 +63,14 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "Pending Approval",
         allowNull: false,
       },
+      img: {
+        type: Sequelize.STRING,
+        defaultValue: null,
+        allowNull: true,
+        validate: {
+          isUrl: true,
+        },
+      },
       isDeleted: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,

@@ -11,12 +11,16 @@ const {
   AuditLogItems,
   SystemPreferences,
 } = require("../models");
+const cloudinary = require("cloudinary").v2; // Use v2 for the latest version of Cloudinary SDK
+const fs = require("fs"); // To handle file system operations
+const path = require("path");
 
 const createProduct = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { name, category, description, price, available_quantity } = req.body;
+    const { name, category, description, price, available_quantity, image } =
+      req.body;
 
     const user = await Users.findOne({
       where: {
@@ -28,17 +32,21 @@ const createProduct = async (req, res) => {
     if (!user) {
       return res.status(403).send({ success: false, message: "Unauthorized" });
     }
+
     const categoryId = await ProductCategories.findOne({
       where: { id: category },
     });
+
     if (!categoryId) {
       return res
         .status(404)
         .send({ success: false, message: "Category not found" });
     }
+
     const checkPreferences = await SystemPreferences.findOne({
       where: { name: "max_price" },
     });
+
     if (checkPreferences) {
       const maxPrice = parseFloat(checkPreferences.value);
       if (price > maxPrice) {
@@ -48,6 +56,50 @@ const createProduct = async (req, res) => {
         });
       }
     }
+
+    let imageFile = req.files.image;
+    let imageUrl;
+
+    // Save the file temporarily on the server
+    let imagePath = path.join(`${__dirname}`, "../uploads", imageFile.name);
+
+    if (imageFile) {
+      // Move the file temporarily
+      await imageFile.mv(imagePath, (err) => {
+        if (err) {
+          throw new Error("File move failed");
+        }
+      });
+
+      // Upload to Cloudinary and get the image URL
+      const cloudinaryUpload = async () => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(
+            imagePath,
+            { folder: process.env.CLOUDINARY_FOLDER },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result.secure_url);
+              }
+            }
+          );
+        });
+      };
+
+      // Wait for Cloudinary upload to finish
+      imageUrl = await cloudinaryUpload();
+
+      // Remove the local temporary image file
+      fs.unlink(imagePath, (unlinkError) => {
+        if (unlinkError) {
+          console.error("Failed to delete temporary file", unlinkError);
+        }
+      });
+    }
+
+    // Create the product in the database with the image URL
     const product = await Products.create(
       {
         name,
@@ -56,10 +108,12 @@ const createProduct = async (req, res) => {
         price: parseFloat(price).toFixed(2),
         available_quantity: Number(available_quantity),
         created_by: user.id,
+        img: imageUrl, // Use the image URL from Cloudinary
       },
       { transaction }
     );
-    transaction.commit();
+
+    await transaction.commit(); // Commit the transaction
     res.status(201).send({
       success: true,
       message: "Product created successfully",
@@ -67,7 +121,7 @@ const createProduct = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    await transaction.rollback();
+    await transaction.rollback(); // Rollback if there's an error
     res.status(500).send({ success: false, message: "Internal Server Error" });
   }
 };
