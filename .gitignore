@@ -1,3 +1,5 @@
 node_modules
 .env
 db.sql
+tempemailreact.js
+tempemailnode.js

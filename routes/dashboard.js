@@ -1,13 +1,7 @@
 const express = require("express");
 const router = express.Router();
-// const { validationResult } = require("express-validator");
-const dashboardController = require("../controllers/dashboardController");
+const dashboardController = require("../controllers/dashboard");
 const authMiddleware = require("../middlewares/auth");
-// const {
-//   addToCartValidator,
-//   removeFromCartValidator,
-// } = require("../validators/cart");
-// const handleValidationErrors = require("../middlewares/handleValidation");
 
 // Customer
 router.get(

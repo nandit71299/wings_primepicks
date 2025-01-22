@@ -166,38 +166,35 @@ const getCartItems = async (req, res) => {
   try {
     const user = req.user;
 
-    // Find the cart for the current user
     const findCart = await Carts.findOne({
       where: { user_id: user.id },
       include: [
         {
-          model: CartItems, // Include CartItems
+          model: CartItems,
           include: [
             {
-              model: Products, // Include Products inside CartItems
-              attributes: ["id", "name", "price", "description"], // Choose which attributes to return
+              model: Products,
+              attributes: ["id", "name", "price", "description"],
             },
           ],
         },
       ],
     });
 
-    // If no cart is found
     if (!findCart) {
       return res
         .status(404)
         .send({ success: false, message: "Cart not found" });
     }
 
-    // Format the response to include the cart items with their associated products
     const cartItems = findCart.CartItems.map((cartItem) => {
       return {
-        product: cartItem.Product, // Access the Product data
+        product: cartItem.Product,
         quantity: cartItem.quantity,
       };
     });
 
-    return res.status(200).send({ success: true, cartItems }); // Send cart items with product details
+    return res.status(200).send({ success: true, cartItems });
   } catch (error) {
     console.error(error);
     return res

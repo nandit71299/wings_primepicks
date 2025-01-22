@@ -15,6 +15,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "order_id",
         as: "order",
       });
+      Disputes.belongsTo(models.Users, {
+        foreignKey: "user_id",
+        as: "user",
+      });
     }
   }
   Disputes.init(

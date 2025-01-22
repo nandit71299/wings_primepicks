@@ -7,10 +7,13 @@ const {
   Disputes,
   Carts,
   CartItems,
-  Sequelize,
   sequelize,
   ProductCategories,
 } = require("../models");
+const { Op, Sequelize } = require("sequelize");
+const path = require("path");
+const fs = require("fs");
+const { parse } = require("json2csv");
 
 const getCustomerDashboard = (req, res) => {
   try {
@@ -25,11 +28,8 @@ const getSellerDashboard = async (req, res) => {
       return res.status(403).send({ success: false, message: "Unauthorized" });
     }
 
-    // const orderStatuses = ["Pending", "Cancelled", "Refunded"]; // Example statuses
-
     const totalOrdersByStatus = await Orders.findAll({
       attributes: [
-        // Count of orders for each status (pending, cancelled, refunded, etc.)
         [
           Sequelize.fn(
             "COUNT",
@@ -221,15 +221,20 @@ const getSellerDashboard = async (req, res) => {
 const getAdminDashboard = async (req, res) => {
   try {
     const user = req.user;
+
     if (user.role !== "admin") {
       return res.status(403).send({ success: false, message: "Unauthorized" });
     }
 
+    // Check for the generatecsv flag
+    const { generatecsv } = req.query; // Assume the flag comes as a query parameter
+
+    // Fetch dashboard data
     const users = await Users.findAll({
       attributes: ["id", "first_name", "last_name", "email", "role"],
       order: [["createdAt", "DESC"]],
       where: {
-        role: { [Sequelize.Op.notIn]: ["admin"] },
+        role: { [Op.notIn]: ["admin"] },
       },
       limit: 5,
     });
@@ -253,7 +258,7 @@ const getAdminDashboard = async (req, res) => {
       ],
       where: {
         role: {
-          [Sequelize.Op.in]: ["seller", "customer"], // Filter for sellers and customers only
+          [Sequelize.Op.in]: ["seller", "customer"],
         },
       },
     });
@@ -269,7 +274,6 @@ const getAdminDashboard = async (req, res) => {
         {
           model: OrderItems,
           as: "order_items",
-          attributes: [],
           include: [
             {
               model: Products,
@@ -280,33 +284,7 @@ const getAdminDashboard = async (req, res) => {
         },
       ],
     });
-    // const popularProducts = await Products.findAll({
-    //   attributes: [
-    //     "id",
-    //     "name",
-    //     [
-    //       Sequelize.fn("COUNT", Sequelize.col("OrderItems.product_id")), // Use the alias here
-    //       "total_orders",
-    //     ],
-    //   ],
-    //   include: [
-    //     {
-    //       model: OrderItems,
-    //       as: "order_item", // Correct alias for OrderItems
-    //       attributes: ["id", "product_id"],
-    //       include: [
-    //         {
-    //           model: Orders,
-    //           as: "order",
-    //           attributes: ["id"],
-    //         },
-    //       ],
-    //     },
-    //   ],
-    //   group: ["Products.id"],
-    //   order: [[Sequelize.literal("total_orders"), "DESC"]],
-    //   limit: 5,
-    // });
+
     const [popularProducts, metaData] = await sequelize.query(`
       SELECT 
         p.id AS product_id,
@@ -330,10 +308,7 @@ const getAdminDashboard = async (req, res) => {
         "id",
         "name",
         [
-          Sequelize.fn(
-            "COUNT",
-            Sequelize.col("Products.order_item.order.id") // Count orders related to products in this category
-          ),
+          Sequelize.fn("COUNT", Sequelize.col("Products.order_items.order.id")),
           "total_orders",
         ],
       ],
@@ -344,7 +319,7 @@ const getAdminDashboard = async (req, res) => {
           include: [
             {
               model: OrderItems,
-              as: "order_item",
+              as: "order_items",
               attributes: [],
               include: [
                 {
@@ -357,20 +332,161 @@ const getAdminDashboard = async (req, res) => {
           ],
         },
       ],
-      group: ["ProductCategories.id"], // Group by ProductCategory to count orders per category
-      order: [[Sequelize.literal("total_orders"), "DESC"]], // Order by the total orders in descending order
+      group: ["ProductCategories.id"],
+      order: [[Sequelize.literal("total_orders"), "DESC"]],
     });
 
-    res.json({
-      success: true,
-      data: {
-        usersCount: usersCount,
-        recentUsers: users,
-        recentPurchases: recentPurchases,
-        popularProducts: popularProducts,
-        popularProductCategories: popularProductCategories,
-      },
-    });
+    if (generatecsv === "true") {
+      const filePath = path.join(__dirname, "admin_dashboard.csv");
+
+      // Generate CSV data for multiple sections
+
+      // User Info section
+      const userInfoData = users.map((user) => ({
+        user_id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: user.role,
+      }));
+
+      // User Count section
+      const userCountData = [
+        {
+          total_sellers: usersCount?.[0]?.dataValues?.total_sellers,
+          total_customers: usersCount?.[0]?.dataValues?.total_customers,
+        },
+      ];
+
+      // Recent Purchases section
+      const recentPurchasesData = recentPurchases.map((purchase) => ({
+        order_id: purchase.id,
+        user_name: `${purchase.user.first_name} ${purchase.user.last_name}`,
+        order_date: purchase.createdAt,
+        total_amount: purchase.total,
+        product_names: purchase.order_items
+          .map((item) => item.product.name)
+          .join(", "),
+      }));
+
+      // Popular Products section
+      const popularProductsData = popularProducts.map((product) => ({
+        product_id: product.product_id,
+        product_name: product.product_name,
+        total_orders: product.total_orders,
+      }));
+
+      // Popular Product Categories section
+      const popularProductCategoriesData = popularProductCategories.map(
+        (category) => ({
+          category_id: category.id,
+          category_name: category.name,
+          total_orders: category.total_orders,
+        })
+      );
+
+      // Helper function to write data to CSV
+      const writeCsv = (data, headers, append = false) => {
+        const csv = parse(data, { fields: headers });
+        const writeMode = append ? "a" : "w";
+        fs.writeFileSync(filePath, csv, { flag: writeMode });
+      };
+
+      // Write an empty row before the User Info section
+      fs.appendFileSync(filePath, "\n");
+
+      // Write User Info CSV with header
+      const userHeaders = [
+        "user_id",
+        "first_name",
+        "last_name",
+        "email",
+        "role",
+      ];
+      writeCsv(userInfoData, userHeaders);
+
+      // Append empty row for separation
+      fs.appendFileSync(filePath, "\n");
+
+      // Write an empty row before the User Count section
+      fs.appendFileSync(filePath, "\n");
+
+      // Write User Count CSV with header
+      const userCountHeaders = ["total_sellers", "total_customers"];
+      writeCsv(userCountData, userCountHeaders, true);
+
+      // Append empty row for separation
+      fs.appendFileSync(filePath, "\n");
+
+      // Write an empty row before the Recent Purchases section
+      fs.appendFileSync(filePath, "\n");
+
+      // Write Recent Purchases CSV with header
+      const recentPurchasesHeaders = [
+        "order_id",
+        "user_name",
+        "order_date",
+        "total_amount",
+      ];
+
+      writeCsv(recentPurchasesData, recentPurchasesHeaders, true);
+
+      // Append empty row for separation
+      fs.appendFileSync(filePath, "\n");
+
+      // Write an empty row before the Popular Products section
+      fs.appendFileSync(filePath, "\n");
+
+      // Write Popular Products CSV with header
+      const popularProductsHeaders = [
+        "product_id",
+        "product_name",
+        "total_orders",
+      ];
+      writeCsv(popularProductsData, popularProductsHeaders, true);
+
+      // Append empty row for separation
+      fs.appendFileSync(filePath, "\n");
+
+      // Write an empty row before the Popular Product Categories section
+      fs.appendFileSync(filePath, "\n");
+
+      // Write Popular Product Categories CSV with header
+      const popularProductCategoriesHeaders = [
+        "category_id",
+        "category_name",
+        "total_orders",
+      ];
+      writeCsv(
+        popularProductCategoriesData,
+        popularProductCategoriesHeaders,
+        true
+      );
+
+      // Send the CSV file as a response to the user
+      res.download(filePath, "admin_dashboard.csv", (err) => {
+        if (err) {
+          console.error(err);
+          res
+            .status(500)
+            .send({ success: false, message: "Error sending CSV file" });
+        } else {
+          // Optionally remove the file after sending
+          fs.unlinkSync(filePath);
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          usersCount,
+          recentUsers: users,
+          recentPurchases,
+          popularProducts,
+          popularProductCategories,
+        },
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).send({ success: false, message: "Internal Server Error" });

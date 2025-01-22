@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 const { Op } = require("sequelize");
 dotenv.config();
 
-const { Users } = require("../models");
+const { Users, SystemPreferences } = require("../models");
 const jwt = require("jsonwebtoken");
 
 const register = async (req, res) => {
@@ -25,6 +25,9 @@ const register = async (req, res) => {
         .status(400)
         .send({ success: false, message: "Email or Phone is already in use." });
     }
+    const checkPreferences = await SystemPreferences.findOne({
+      where: { name: "registration_status" },
+    });
 
     // Save user to database
     const newUser = await Users.create({
@@ -34,6 +37,7 @@ const register = async (req, res) => {
       phone,
       password: hashedPassword,
       role,
+      is_active: checkPreferences?.value === "Pending" ? false : true,
     });
     newUser.save();
     res
@@ -52,11 +56,13 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await Users.findOne({ where: { email } });
+    const user = await Users.findOne({ where: { email, is_active: true } });
     if (!user) {
-      return res
-        .status(401)
-        .send({ success: false, message: "Invalid email or password" });
+      return res.status(401).send({
+        success: false,
+        message:
+          "Invalid email or password, or your account is deactivated at the moment.",
+      });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
