@@ -76,7 +76,7 @@ const login = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.json({ success: true, message: "Login successful", token });
+    res.json({ success: true, message: "Login successful", token, user: user });
   } catch (error) {
     console.error(error);
     res.status(500).send({
@@ -87,4 +87,24 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { register, login };
+const verification = async (req, res) => {
+  try {
+    const user = req.user;
+    const userData = await Users.findOne({
+      where: { id: user.id, is_active: true },
+    });
+    if (!userData) {
+      return res
+        .status(403)
+        .send({ success: false, message: "User is not active or not found" });
+    }
+    return res.json({
+      success: true,
+      message: "User verification successful",
+      user: userData,
+    });
+  } catch (error) {
+    res.json({ success: true, message: "User Verified successfully" });
+  }
+};
+module.exports = { register, login, verification };

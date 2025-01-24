@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { validationResult } = require("express-validator");
 const authController = require("../controllers/auth");
 const { loginValidator, registerValidator } = require("../validators/auth");
 const handleValidationErrors = require("../middlewares/handleValidation");
+const authMiddleware = require("../middlewares/auth");
 
 //Common
 router.post(
@@ -19,4 +19,5 @@ router.post(
   authController.register
 );
 
+router.post("/verification", authMiddleware, authController.verification);
 module.exports = router;

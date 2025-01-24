@@ -168,6 +168,7 @@ const getCartItems = async (req, res) => {
 
     const findCart = await Carts.findOne({
       where: { user_id: user.id },
+      attributes: ["id"],
       include: [
         {
           model: CartItems,
@@ -194,7 +195,9 @@ const getCartItems = async (req, res) => {
       };
     });
 
-    return res.status(200).send({ success: true, cartItems });
+    return res
+      .status(200)
+      .send({ success: true, cartItems, cart_id: findCart.id });
   } catch (error) {
     console.error(error);
     return res

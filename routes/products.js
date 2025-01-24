@@ -14,7 +14,13 @@ const {
 
 //Customer
 router.get("/", productsController.getAllProducts);
+router.get(
+  "/products-by-categories",
+  productsController.getProductsByCategories
+);
+router.get("/getAllCategories", productsController.getAllCategories);
 
+router.get("/:id", productsController.getSingle);
 //Commons
 router.get(
   "/:sellerId/:productId",
@@ -44,6 +50,7 @@ router.post(
   handleValidationErrors,
   productsController.createProduct
 );
+
 router.delete(
   "/:productId/",
   authMiddleware,

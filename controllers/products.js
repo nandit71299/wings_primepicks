@@ -19,8 +19,7 @@ const createProduct = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { name, category, description, price, available_quantity, image } =
-      req.body;
+    const { name, category, description, price, available_quantity } = req.body;
 
     const user = await Users.findOne({
       where: {
@@ -197,6 +196,8 @@ const getAllProducts = async (req, res) => {
       name,
       new_arrivals,
       sort_by_price,
+      page = 1,
+      page_size = 10,
     } = req.query;
 
     const whereConditions = {
@@ -235,17 +236,76 @@ const getAllProducts = async (req, res) => {
       }
     }
 
+    const limit = parseInt(page_size);
+    const offset = (parseInt(page) - 1) * limit;
+
     const products = await Products.findAll({
       where: whereConditions,
       order: order,
+      limit: limit,
+      offset: offset,
+      include: [{ model: ProductCategories, as: "category" }],
     });
 
-    return res.status(200).send({ success: true, products });
+    const totalProducts = await Products.count({
+      where: whereConditions,
+    });
+
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    return res.status(200).send({
+      success: true,
+      products,
+      page,
+      totalPages,
+      totalProducts,
+    });
   } catch (error) {
     console.error(error);
     return res
       .status(500)
       .send({ success: false, message: "Internal Server Error" });
+  }
+};
+
+const getSingle = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Products.findOne({
+      where: {
+        id: Number(id),
+        isDeleted: false,
+        isActive: true,
+      },
+    });
+    if (!product) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Product not found" });
+    }
+    res.status(200).send({ success: true, product });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
+};
+
+const getProductsByCategories = async (req, res) => {
+  try {
+    const productCategories = await ProductCategories.findAll({
+      include: [
+        {
+          model: Products,
+          attributes: ["id", "name", "price", "img"],
+        },
+      ],
+    });
+
+    res.status(200).send({ success: true, products: productCategories });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -429,6 +489,20 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+const getAllCategories = async (req, res) => {
+  try {
+    const categories = await ProductCategories.findAll({
+      where: {
+        is_active: true,
+      },
+    });
+    res.status(200).send({ success: true, categories });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
+};
+
 module.exports = {
   createProduct,
   getStoreProduct,
@@ -436,4 +510,7 @@ module.exports = {
   getAllProducts,
   updateProduct,
   deleteProduct,
+  getSingle,
+  getProductsByCategories,
+  getAllCategories,
 };
