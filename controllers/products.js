@@ -11,6 +11,7 @@ const {
   AuditLogItems,
   SystemPreferences,
 } = require("../models");
+
 const cloudinary = require("cloudinary").v2; // Use v2 for the latest version of Cloudinary SDK
 const fs = require("fs"); // To handle file system operations
 const path = require("path");
@@ -60,7 +61,11 @@ const createProduct = async (req, res) => {
     let imageUrl;
 
     // Save the file temporarily on the server
-    let imagePath = path.join(`${__dirname}`, "../uploads", imageFile.name);
+    let imagePath = await path.join(
+      `${__dirname}`,
+      "../uploads",
+      imageFile.name
+    );
 
     if (imageFile) {
       // Move the file temporarily
@@ -203,6 +208,7 @@ const getAllProducts = async (req, res) => {
     const whereConditions = {
       isDeleted: false,
       isActive: true,
+      status: "approved",
     };
 
     if (category) {
@@ -298,6 +304,11 @@ const getProductsByCategories = async (req, res) => {
         {
           model: Products,
           attributes: ["id", "name", "price", "img"],
+          where: {
+            isActive: true,
+            isDeleted: false,
+            status: "approved",
+          },
         },
       ],
     });

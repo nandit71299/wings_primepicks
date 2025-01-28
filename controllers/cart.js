@@ -9,7 +9,7 @@ const addToCart = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const user = req.user;
-    const { sellerId, productId } = req.params;
+    const { productId } = req.params;
 
     // Check if the user is a customer
     const findUser = await Users.findOne({
@@ -23,24 +23,10 @@ const addToCart = async (req, res) => {
       return res.status(401).send({ success: false, message: "Unauthorized" });
     }
 
-    // Check if the seller exists
-    const findSeller = await Users.findOne({
-      where: {
-        id: sellerId,
-        role: "seller",
-      },
-    });
-    if (!findSeller) {
-      return res
-        .status(404)
-        .send({ success: false, message: "Seller not found" });
-    }
-
     // Check if the product exists and belongs to the seller
     const findProduct = await Products.findOne({
       where: {
         id: productId,
-        created_by: sellerId,
         isDeleted: false,
         isActive: true,
       },
@@ -51,7 +37,6 @@ const addToCart = async (req, res) => {
         .send({ success: false, message: "Product not found" });
     }
 
-    // Check if the user already has a cart
     let findCart = await Carts.findOne({
       where: {
         user_id: user.id,
@@ -175,7 +160,8 @@ const getCartItems = async (req, res) => {
           include: [
             {
               model: Products,
-              attributes: ["id", "name", "price", "description"],
+              attributes: ["id", "name", "price", "description", "img"],
+              where: { isDeleted: false, isActive: true, status: "approved" },
             },
           ],
         },
@@ -188,16 +174,19 @@ const getCartItems = async (req, res) => {
         .send({ success: false, message: "Cart not found" });
     }
 
-    const cartItems = findCart.CartItems.map((cartItem) => {
-      return {
-        product: cartItem.Product,
-        quantity: cartItem.quantity,
-      };
-    });
+    // Flattening the cartItems and merging product data directly into the object
+    const cartItems = findCart.CartItems.map((cartItem) => ({
+      id: cartItem.Product.id,
+      name: cartItem.Product.name,
+      price: cartItem.Product.price,
+      description: cartItem.Product.description,
+      img: cartItem.Product.img,
+      quantity: cartItem.quantity,
+    }));
 
     return res
       .status(200)
-      .send({ success: true, cartItems, cart_id: findCart.id });
+      .send({ success: true, products: cartItems, cart_id: findCart.id });
   } catch (error) {
     console.error(error);
     return res

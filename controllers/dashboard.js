@@ -4,9 +4,6 @@ const {
   Users,
   Orders,
   OrderItems,
-  Disputes,
-  Carts,
-  CartItems,
   sequelize,
   ProductCategories,
 } = require("../models");
@@ -493,8 +490,71 @@ const getAdminDashboard = async (req, res) => {
   }
 };
 
+const getAllCustomers = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (user.role === "admin") {
+      const customers = await Users.findAll({
+        attributes: ["id", "first_name", "last_name", "email", "is_active"],
+        order: [["createdAt", "DESC"]],
+        where: {
+          role: "customer",
+        },
+      });
+      return res.json({ success: true, data: customers });
+    } else if (user.role === "seller") {
+      const customers = await Orders.findAll({
+        include: [
+          {
+            model: Users,
+            as: "user",
+            attributes: ["id", "first_name", "last_name", "email", "is_active"],
+          },
+          {
+            model: OrderItems,
+            as: "order_items",
+            include: [
+              {
+                model: Products,
+                as: "product",
+                // attributes: ["id", "name", "price"],
+              },
+            ],
+          },
+        ],
+      });
+
+      return res.json({ success: true, data: customers });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (user.role !== "admin") {
+      return res.status(403).send({ success: false, message: "Unauthorized" });
+    }
+    const users = await Users.findAll({
+      attributes: ["id", "first_name", "last_name", "email", "role"],
+      order: [["createdAt", "DESC"]],
+    });
+    return res.json({ success: true, data: users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
+};
+
 module.exports = {
   getSellerDashboard,
   getAdminDashboard,
   getCustomerDashboard,
+  getAllUsers,
+  getAllCustomers,
 };

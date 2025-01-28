@@ -11,7 +11,7 @@ const handleValidationErrors = require("../middlewares/handleValidation");
 
 //Customer
 router.post(
-  "/:sellerId/:productId/",
+  "/:productId/",
   authMiddleware,
   addToCartValidator,
   handleValidationErrors,

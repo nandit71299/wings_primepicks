@@ -2,8 +2,6 @@ const { param, body } = require("express-validator");
 
 const updateOrderStatusValidator = [
   body("status")
-    .trim()
-    .notEmpty()
     .isIn([
       "Pending",
       "Processing",

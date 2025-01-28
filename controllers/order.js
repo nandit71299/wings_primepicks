@@ -12,8 +12,9 @@ const {
   Orders,
   OrderItems,
   OrderStatusHistory,
-  Sequelize,
+  Disputes,
 } = require("../models");
+const Sequelize = require("sequelize");
 
 const getOrderEstimate = async (req, res) => {
   const user = req.user;
@@ -55,19 +56,32 @@ const getOrderEstimate = async (req, res) => {
     let subtotal = 0;
     let tax = 0;
 
-    for (const item of findCartItems) {
-      const product = productMap[item.product_id];
+    // Prepare products with quantities from the cart and calculate subtotal/tax
+    const productsWithQuantity = findCartItems
+      .map((item) => {
+        const product = productMap[item.product_id];
+        if (product) {
+          const productSubtotal = product.price * item.quantity;
+          subtotal += productSubtotal;
+          tax += productSubtotal * 0.18;
 
-      if (product) {
-        subtotal += product.price * item.quantity;
-        tax += product.price * item.quantity * 0.18;
-      }
-    }
+          return {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: item.quantity, // Add quantity here
+            description: product.description,
+            img: product.img,
+          };
+        }
+      })
+      .filter(Boolean); // Remove undefined values if any product was missing
 
     const total = subtotal + tax;
 
-    return res.send({
+    return res.json({
       success: true,
+      products: productsWithQuantity, // Send products with quantity
       subtotal: subtotal.toFixed(2),
       tax: tax.toFixed(2),
       total: total.toFixed(2),
@@ -178,8 +192,9 @@ const createOrder = async (req, res) => {
 
     // Step 10: Remove items from the cart after the order is successfully created
     await CartItems.destroy({ where: { cart_id: findCart.id } });
-
-    res.send({ success: true, message: "Order created successfully" });
+    setTimeout(() => {
+      res.send({ success: true, message: "Order created successfully" });
+    }, 2000);
   } catch (error) {
     console.error(error);
     return res
@@ -262,15 +277,36 @@ const getAllOrders = async (req, res) => {
 
     const whereConditions = {};
 
-    // Add user_id filter if provided
-    if (user_id) {
-      whereConditions.user_id = user_id;
-    }
-
-    // If the user is a seller, filter orders by products created by the seller
+    // If the user is an admin, send all orders
     let responseOrders = [];
-    if (user.role === "seller") {
-      whereConditions["$OrderItems.Product.created_by$"] = user.id;
+    if (user.role === "admin") {
+      // Admin gets all orders, so no filtering based on user_id
+      if (status) {
+        whereConditions.status = status;
+      }
+
+      // Fetch all orders based on the conditions (if any)
+      responseOrders = await Orders.findAll({
+        where: whereConditions,
+        include: [
+          {
+            model: OrderItems,
+            as: "order_items",
+            include: [
+              {
+                model: Products,
+                as: "product",
+                attributes: ["id", "name", "price"],
+              },
+            ],
+          },
+        ],
+        order: sort_by_date ? [["createdAt", sort_by_date]] : [], // Sort by date if provided
+      });
+    }
+    // If the user is a seller, filter orders by products created by the seller
+    else if (user.role === "seller") {
+      whereConditions["$order_items.product.created_by$"] = user.id;
 
       // Add status filter if provided
       if (status) {
@@ -283,9 +319,11 @@ const getAllOrders = async (req, res) => {
         include: [
           {
             model: OrderItems,
+            as: "order_items",
             include: [
               {
                 model: Products,
+                as: "product",
                 where: {
                   created_by: user.id,
                 },
@@ -312,12 +350,15 @@ const getAllOrders = async (req, res) => {
         include: [
           {
             model: OrderItems,
+            as: "order_items",
+
             include: [
               {
                 model: Products,
+                as: "product",
                 where: {
                   // Matching the 'product_id' from 'OrderItems' to 'Products.id'
-                  id: Sequelize.col("OrderItems.product_id"),
+                  id: Sequelize.col("order_items.product_id"),
                 },
                 attributes: ["id", "name", "price"],
               },
@@ -387,10 +428,39 @@ const getOrderInfo = async (req, res) => {
   }
 };
 
+const raiseADispute = async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.role !== "customer") {
+      return res.status(403).send({ success: false, message: "Unauthorized" });
+    }
+    const { order_id, issue } = req.body;
+    const findOrder = await Orders.findOne({ where: { id: order_id } });
+    if (!findOrder) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Order not found" });
+    }
+    await Disputes.create({
+      order_id,
+      user_id: user.id,
+      reason: issue,
+      status: "open",
+    });
+    return res.send({ success: true, message: "Dispute raised successfully" });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .send({ success: false, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getOrderEstimate,
   createOrder,
   updateOrderStatus,
   getAllOrders,
   getOrderInfo,
+  raiseADispute,
 };

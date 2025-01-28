@@ -11,6 +11,7 @@ const {
   createAdminValidator,
 } = require("../validators/admin");
 const handleValidationErrors = require("../middlewares/handleValidation");
+const { deleteProduct } = require("../validators/products");
 
 const router = express.Router();
 
@@ -37,6 +38,13 @@ router.put(
   adminController.prodReview
 );
 
+router.delete(
+  "/products/:productId/",
+  authMiddleware,
+  deleteProduct,
+  handleValidationErrors,
+  adminController.deleteProduct
+);
 router.put(
   "/orderreview",
   authMiddleware,

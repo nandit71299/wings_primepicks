@@ -23,16 +23,16 @@ router.get("/getAllCategories", productsController.getAllCategories);
 router.get("/:id", productsController.getSingle);
 //Commons
 router.get(
+  "/all/:sellerId",
+  getAllStoreProducts,
+  handleValidationErrors,
+  productsController.getAllStoreProducts
+);
+router.get(
   "/:sellerId/:productId",
   getStoreProduct,
   handleValidationErrors,
   productsController.getStoreProduct
-);
-router.get(
-  "/:sellerId",
-  getAllStoreProducts,
-  handleValidationErrors,
-  productsController.getAllStoreProducts
 );
 
 //Seller

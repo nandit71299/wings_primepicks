@@ -11,7 +11,7 @@ router.get("/estimate", authMiddleware, orderController.getOrderEstimate);
 router.post("/", authMiddleware, orderController.createOrder);
 
 //Seller
-router.post(
+router.put(
   "/updateorderstatus",
   authMiddleware,
   updateOrderStatusValidator,
@@ -22,5 +22,10 @@ router.post(
 // Common
 router.get("/", authMiddleware, orderController.getAllOrders);
 router.get("/:order_id", authMiddleware, orderController.getOrderInfo);
+router.get(
+  "/raiseadispute/:orderId",
+  authMiddleware,
+  orderController.raiseADispute
+);
 
 module.exports = router;

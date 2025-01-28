@@ -6,6 +6,9 @@ const {
   Disputes,
   OrderItems,
   SystemPreferences,
+  AuditLogs,
+  AuditLogItems,
+  sequelize,
 } = require("../models");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
@@ -34,7 +37,7 @@ const updateUserAccess = async (req, res) => {
         .json({ success: false, message: "Invalid action" });
     }
 
-    const findUser = await User.findOne({
+    const findUser = await Users.findOne({
       where: {
         id: user_id,
       },
@@ -383,6 +386,64 @@ const createAdmin = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
+const deleteProduct = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const user = req.user;
+    const { productId } = req.params;
+    const findUser = await Users.findOne({
+      where: {
+        id: user.id,
+        role: "admin",
+      },
+    });
+    if (!findUser) {
+      return res.status(403).send({ success: false, message: "Unauthorized" });
+    }
+    const product = await Products.findOne({
+      where: {
+        id: productId,
+        isDeleted: false,
+        isActive: true,
+      },
+    });
+    if (!product) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Product not found" });
+    }
+    const deletedProduct = await product.update({
+      isDeleted: true,
+      isActive: false,
+    });
+
+    await createAuditLog({
+      action: "delete",
+      target_table: "Products",
+      target_id: productId,
+      user_id: user.id,
+      items_count: 1,
+      field_name: "isDeleted",
+      old_value: false,
+      new_value: true,
+      req,
+    });
+    transaction.commit();
+    res.status(200).send({
+      success: true,
+      message: "Product deleted successfully",
+      deletedProduct,
+    });
+  } catch (error) {
+    transaction.rollback();
+    console.error(error);
+    return res
+      .status(500)
+      .send({ success: false, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   updateUserAccess,
   updateUserRole,
@@ -392,4 +453,5 @@ module.exports = {
   disputeReview,
   addPreference,
   createAdmin,
+  deleteProduct,
 };

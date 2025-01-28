@@ -23,7 +23,7 @@ const prodReviewValidator = [
     .withMessage("Product ID must be a number"),
   body("status")
     .trim()
-    .isIn(["Approved", "Disapproved"])
+    .isIn(["Approved", "Disapproved", "Pending Approval"])
     .withMessage("Please select a valid status"),
 ];
 
